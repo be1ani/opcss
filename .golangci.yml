@@ -1,0 +1,26 @@
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+
+linters:
+  disable-all: true
+  enable:
+    - errcheck       # unhandled error returns
+    - govet          # reports suspicious constructs
+    - staticcheck    # SA/QF/ST/S checks via staticcheck.io
+    - gofmt          # formatting compliance
+    - goimports      # import grouping and formatting
+    - unused         # unused code
+    - misspell       # common English misspellings in comments/strings
+
+linters-settings:
+  goimports:
+    local-prefixes: github.com/be1ani/opcfs
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0
