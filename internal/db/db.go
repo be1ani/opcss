@@ -44,3 +44,37 @@ func (s *Store) MarkFileComplete(ctx context.Context, fileID string) error {
 	_, err := s.db.ExecContext(ctx, q, fileID)
 	return err
 }
+
+func (s *Store) GetChunksByFileID(ctx context.Context, fileID string) ([]Chunk, error) {
+	const q = `
+		SELECT id, file_id, chunk_index, total_chunks, size, checksum, storage_key, created_at
+		FROM chunks WHERE file_id = $1
+		ORDER BY chunk_index`
+	rows, err := s.db.QueryContext(ctx, q, fileID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var chunks []Chunk
+	for rows.Next() {
+		var c Chunk
+		if err := rows.Scan(&c.ID, &c.FileID, &c.ChunkIndex, &c.TotalChunks, &c.Size, &c.Checksum, &c.StorageKey, &c.CreatedAt); err != nil {
+			return nil, err
+		}
+		chunks = append(chunks, c)
+	}
+	return chunks, rows.Err()
+}
+
+func (s *Store) GetChunkByIndex(ctx context.Context, fileID string, chunkIndex int) (*Chunk, error) {
+	const q = `
+		SELECT id, file_id, chunk_index, total_chunks, size, checksum, storage_key, created_at
+		FROM chunks WHERE file_id = $1 AND chunk_index = $2`
+	var c Chunk
+	err := s.db.QueryRowContext(ctx, q, fileID, chunkIndex).Scan(
+		&c.ID, &c.FileID, &c.ChunkIndex, &c.TotalChunks, &c.Size, &c.Checksum, &c.StorageKey, &c.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &c, nil
+}

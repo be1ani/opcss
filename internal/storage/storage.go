@@ -25,6 +25,9 @@ type StorageBackend interface {
 
 	// UploadChunk writes a pre-read byte slice to the backend under key.
 	UploadChunk(ctx context.Context, key string, data []byte) error
+
+	// DownloadChunk fetches the object identified by key and returns its bytes.
+	DownloadChunk(ctx context.Context, key string) ([]byte, error)
 }
 
 // MinioBackend implements StorageBackend using the minio-go SDK, compatible
@@ -67,6 +70,15 @@ func (m *MinioBackend) Upload(ctx context.Context, key string, r io.Reader) (int
 
 func (m *MinioBackend) Download(ctx context.Context, key string) (io.ReadCloser, error) {
 	return m.client.GetObject(ctx, m.bucket, key, minio.GetObjectOptions{})
+}
+
+func (m *MinioBackend) DownloadChunk(ctx context.Context, key string) ([]byte, error) {
+	obj, err := m.client.GetObject(ctx, m.bucket, key, minio.GetObjectOptions{})
+	if err != nil {
+		return nil, err
+	}
+	defer obj.Close()
+	return io.ReadAll(obj)
 }
 
 func (m *MinioBackend) Delete(ctx context.Context, key string) error {

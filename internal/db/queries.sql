@@ -16,3 +16,14 @@ WHERE file_id = $1;
 UPDATE files
 SET status = 'complete'
 WHERE id = $1;
+
+-- name: GetChunksByFileID :many
+SELECT id, file_id, chunk_index, total_chunks, size, checksum, storage_key, created_at
+FROM chunks
+WHERE file_id = $1
+ORDER BY chunk_index;
+
+-- name: GetChunkByIndex :one
+SELECT id, file_id, chunk_index, total_chunks, size, checksum, storage_key, created_at
+FROM chunks
+WHERE file_id = $1 AND chunk_index = $2;
