@@ -149,7 +149,9 @@ func uploadChunk(t *testing.T, srv *httptest.Server, fileID string, index, total
 	if _, err := fw.Write(data); err != nil {
 		t.Fatal(err)
 	}
-	mw.Close()
+	if err := mw.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	resp, err := http.Post(
 		srv.URL+"/api/v1/files/"+fileID+"/chunks",
@@ -159,7 +161,11 @@ func uploadChunk(t *testing.T, srv *httptest.Server, fileID string, index, total
 	if err != nil {
 		t.Fatalf("upload chunk %d: %v", index, err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("upload chunk %d: got status %d, want %d", index, resp.StatusCode, http.StatusCreated)
 	}
@@ -191,7 +197,11 @@ func TestDownloadFile_RoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("download GET: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("download: got status %d, want %d", resp.StatusCode, http.StatusOK)
@@ -228,7 +238,11 @@ func TestDownloadChunk_Single(t *testing.T) {
 	if err != nil {
 		t.Fatalf("chunk GET: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("chunk download: got status %d, want %d", resp.StatusCode, http.StatusOK)
@@ -259,7 +273,11 @@ func TestDownloadFile_NotFound(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusNotFound {
 		t.Errorf("got status %d, want %d", resp.StatusCode, http.StatusNotFound)
@@ -280,7 +298,11 @@ func TestDownloadChunk_NotFound(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusNotFound {
 		t.Errorf("got status %d, want %d", resp.StatusCode, http.StatusNotFound)

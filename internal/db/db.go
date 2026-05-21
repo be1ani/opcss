@@ -4,6 +4,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 )
 
 type Store struct {
@@ -54,7 +55,11 @@ func (s *Store) GetChunksByFileID(ctx context.Context, fileID string) ([]Chunk, 
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			slog.Error("db: close rows", "err", err)
+		}
+	}()
 	var chunks []Chunk
 	for rows.Next() {
 		var c Chunk

@@ -29,7 +29,10 @@ func main() {
 	}
 	store := db.New(sqlDB)
 
-	useSSL, _ := strconv.ParseBool(os.Getenv("STORAGE_USE_SSL"))
+	useSSL, err := strconv.ParseBool(os.Getenv("STORAGE_USE_SSL"))
+	if err != nil {
+		log.Printf("[!] STORAGE_USE_SSL parse error, defaulting to false: %v", err)
+	}
 	backend, err := storage.NewMinioBackend(
 		cfg.StorageEndpoint,
 		cfg.StorageAccessKey,

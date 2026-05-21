@@ -42,7 +42,11 @@ func (h *Handler) handleDownloadFile(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	go func() {
-		defer pw.Close()
+		defer func() {
+			if err := pw.Close(); err != nil {
+				slog.Error("download file: close pipe writer", "file_id", fileID, "err", err)
+			}
+		}()
 		for _, c := range chunks {
 			data, err := h.storage.DownloadChunk(ctx, c.StorageKey)
 			if err != nil {
@@ -112,5 +116,8 @@ func (h *Handler) handleDownloadChunk(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("X-Chunk-Checksum", chunk.Checksum)
-	_, _ = w.Write(data)
+	if _, err := w.Write(data); err != nil {
+		slog.Error("download chunk: write response",
+			"file_id", fileID, "chunk_index", chunkIndex, "err", err)
+	}
 }

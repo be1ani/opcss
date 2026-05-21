@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"log/slog"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -77,7 +78,11 @@ func (m *MinioBackend) DownloadChunk(ctx context.Context, key string) ([]byte, e
 	if err != nil {
 		return nil, err
 	}
-	defer obj.Close()
+	defer func() {
+		if err := obj.Close(); err != nil {
+			slog.Error("storage: close object", "err", err)
+		}
+	}()
 	return io.ReadAll(obj)
 }
 

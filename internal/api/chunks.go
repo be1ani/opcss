@@ -58,7 +58,11 @@ func (h *Handler) handleUploadChunk(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, errBody("chunk_data field required"))
 		return
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			slog.Error("chunk upload: close form file", "file_id", fileID, "err", err)
+		}
+	}()
 
 	data, err := io.ReadAll(f)
 	if err != nil {
