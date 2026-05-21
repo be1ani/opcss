@@ -9,10 +9,20 @@ const (
 	FileStatusComplete FileStatus = "complete"
 )
 
+type VerificationStatus string
+
+const (
+	VerificationStatusOK        VerificationStatus = "ok"
+	VerificationStatusCorrupted VerificationStatus = "corrupted"
+)
+
 type File struct {
-	ID        string
-	Status    FileStatus
-	CreatedAt time.Time
+	ID                 string
+	Status             FileStatus
+	CreatedAt          time.Time
+	VerifiedAt         *time.Time
+	FileChecksum       *string
+	VerificationStatus *VerificationStatus
 }
 
 type Chunk struct {
@@ -33,4 +43,11 @@ type InsertChunkParams struct {
 	Size        int64
 	Checksum    string
 	StorageKey  string
+}
+
+type UpdateFileVerificationParams struct {
+	ID                 string
+	VerifiedAt         time.Time
+	FileChecksum       string
+	VerificationStatus VerificationStatus
 }

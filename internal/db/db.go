@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"log/slog"
+	"time"
 )
 
 type Store struct {
@@ -16,11 +17,21 @@ func New(db *sql.DB) *Store {
 }
 
 func (s *Store) GetFile(ctx context.Context, id string) (*File, error) {
-	const q = `SELECT id, status, created_at FROM files WHERE id = $1`
-	var f File
-	err := s.db.QueryRowContext(ctx, q, id).Scan(&f.ID, &f.Status, &f.CreatedAt)
+	const q = `SELECT id, status, created_at, verified_at, file_checksum, verification_status FROM files WHERE id = $1`
+	var (
+		f                  File
+		verificationStatus *string
+	)
+	err := s.db.QueryRowContext(ctx, q, id).Scan(
+		&f.ID, &f.Status, &f.CreatedAt,
+		&f.VerifiedAt, &f.FileChecksum, &verificationStatus,
+	)
 	if err != nil {
 		return nil, err
+	}
+	if verificationStatus != nil {
+		vs := VerificationStatus(*verificationStatus)
+		f.VerificationStatus = &vs
 	}
 	return &f, nil
 }
@@ -69,6 +80,45 @@ func (s *Store) GetChunksByFileID(ctx context.Context, fileID string) ([]Chunk, 
 		chunks = append(chunks, c)
 	}
 	return chunks, rows.Err()
+}
+
+func (s *Store) UpdateFileVerification(ctx context.Context, p UpdateFileVerificationParams) error {
+	const q = `UPDATE files SET verified_at = $2, file_checksum = $3, verification_status = $4 WHERE id = $1`
+	_, err := s.db.ExecContext(ctx, q, p.ID, p.VerifiedAt, p.FileChecksum, string(p.VerificationStatus))
+	return err
+}
+
+func (s *Store) GetFilesNeedingVerification(ctx context.Context, olderThan time.Time) ([]File, error) {
+	const q = `
+		SELECT id, status, created_at, verified_at, file_checksum, verification_status
+		FROM files
+		WHERE status = 'complete'
+		  AND (verified_at IS NULL OR verified_at < $1)`
+	rows, err := s.db.QueryContext(ctx, q, olderThan)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err := rows.Close(); err != nil {
+			slog.Error("db: close rows", "err", err)
+		}
+	}()
+	var files []File
+	for rows.Next() {
+		var (
+			f                  File
+			verificationStatus *string
+		)
+		if err := rows.Scan(&f.ID, &f.Status, &f.CreatedAt, &f.VerifiedAt, &f.FileChecksum, &verificationStatus); err != nil {
+			return nil, err
+		}
+		if verificationStatus != nil {
+			vs := VerificationStatus(*verificationStatus)
+			f.VerificationStatus = &vs
+		}
+		files = append(files, f)
+	}
+	return files, rows.Err()
 }
 
 func (s *Store) GetChunkByIndex(ctx context.Context, fileID string, chunkIndex int) (*Chunk, error) {

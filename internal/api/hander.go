@@ -21,6 +21,7 @@ type storer interface {
 	MarkFileComplete(ctx context.Context, fileID string) error
 	GetChunksByFileID(ctx context.Context, fileID string) ([]db.Chunk, error)
 	GetChunkByIndex(ctx context.Context, fileID string, chunkIndex int) (*db.Chunk, error)
+	UpdateFileVerification(ctx context.Context, p db.UpdateFileVerificationParams) error
 }
 
 // Handler holds shared dependencies for all HTTP handlers.
@@ -41,6 +42,7 @@ func NewRouter(store storer, backend storage.StorageBackend) http.Handler {
 
 	mux.Route("/api/v1", func(r chi.Router) {
 		r.Post("/files/{id}/chunks", h.handleUploadChunk)
+		r.Post("/files/{id}/verify", h.handleVerifyFile)
 		r.Get("/files/{id}", h.handleDownloadFile)
 		r.Get("/files/{id}/chunks/{index}", h.handleDownloadChunk)
 	})

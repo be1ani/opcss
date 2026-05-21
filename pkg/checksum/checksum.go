@@ -23,3 +23,15 @@ func SHA256Bytes(b []byte) string {
 	sum := sha256.Sum256(b)
 	return hex.EncodeToString(sum[:])
 }
+
+// FileChecksum computes a whole-file digest by hashing the hex-encoded
+// per-chunk SHA-256 digests in chunk_index order. The result is stable
+// across verifications because it depends only on the stored per-chunk
+// digests, not the raw bytes.
+func FileChecksum(chunkDigests []string) string {
+	h := sha256.New()
+	for _, d := range chunkDigests {
+		_, _ = io.WriteString(h, d)
+	}
+	return hex.EncodeToString(h.Sum(nil))
+}

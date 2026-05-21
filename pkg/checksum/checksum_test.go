@@ -2,6 +2,9 @@ package checksum_test
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
+	"io"
 	"testing"
 
 	"github.com/be1ani/opcss/pkg/checksum"
@@ -38,6 +41,72 @@ func TestSHA256Reader(t *testing.T) {
 			t.Errorf("SHA256Reader(%q) = %s, want %s", v.input, got, v.digest)
 		}
 	}
+}
+
+// fileDigest computes the expected FileChecksum directly so tests don't
+// depend on the implementation they are testing.
+func fileDigest(t *testing.T, digests []string) string {
+	t.Helper()
+	h := sha256.New()
+	for _, d := range digests {
+		if _, err := io.WriteString(h, d); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+func TestFileChecksum(t *testing.T) {
+	t.Parallel()
+
+	d0 := checksum.SHA256Bytes([]byte("chunk-zero"))
+	d1 := checksum.SHA256Bytes([]byte("chunk-one"))
+	d2 := checksum.SHA256Bytes([]byte("chunk-two"))
+
+	t.Run("empty input equals SHA256 of nothing", func(t *testing.T) {
+		got := checksum.FileChecksum(nil)
+		want := fileDigest(t, nil)
+		if got != want {
+			t.Errorf("got %s, want %s", got, want)
+		}
+	})
+
+	t.Run("single chunk equals SHA256 of that digest string", func(t *testing.T) {
+		got := checksum.FileChecksum([]string{d0})
+		want := fileDigest(t, []string{d0})
+		if got != want {
+			t.Errorf("got %s, want %s", got, want)
+		}
+	})
+
+	t.Run("three chunks deterministic", func(t *testing.T) {
+		in := []string{d0, d1, d2}
+		c1 := checksum.FileChecksum(in)
+		c2 := checksum.FileChecksum(in)
+		if c1 != c2 {
+			t.Errorf("not deterministic: %s != %s", c1, c2)
+		}
+		want := fileDigest(t, in)
+		if c1 != want {
+			t.Errorf("got %s, want %s", c1, want)
+		}
+	})
+
+	t.Run("order sensitive", func(t *testing.T) {
+		fwd := checksum.FileChecksum([]string{d0, d1, d2})
+		rev := checksum.FileChecksum([]string{d2, d1, d0})
+		if fwd == rev {
+			t.Error("FileChecksum must be order-sensitive but forward==reverse")
+		}
+	})
+
+	t.Run("different payloads differ", func(t *testing.T) {
+		a := checksum.FileChecksum([]string{d0, d1})
+		b := checksum.FileChecksum([]string{d0, d2})
+		if a == b {
+			t.Error("distinct chunk sets produced identical file checksum")
+		}
+	})
 }
 
 // SHA256Reader and SHA256Bytes must always agree.

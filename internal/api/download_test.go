@@ -84,6 +84,22 @@ func (f *fakeStore) GetChunksByFileID(_ context.Context, fileID string) ([]db.Ch
 	return result, nil
 }
 
+func (f *fakeStore) UpdateFileVerification(_ context.Context, p db.UpdateFileVerificationParams) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	file, ok := f.files[p.ID]
+	if !ok {
+		return nil
+	}
+	t := p.VerifiedAt
+	cs := p.FileChecksum
+	vs := p.VerificationStatus
+	file.VerifiedAt = &t
+	file.FileChecksum = &cs
+	file.VerificationStatus = &vs
+	return nil
+}
+
 func (f *fakeStore) GetChunkByIndex(_ context.Context, fileID string, idx int) (*db.Chunk, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

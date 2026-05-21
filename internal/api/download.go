@@ -11,13 +11,15 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/be1ani/opcss/internal/db"
 	"github.com/be1ani/opcss/pkg/checksum"
 )
 
 func (h *Handler) handleDownloadFile(w http.ResponseWriter, r *http.Request) {
 	fileID := chi.URLParam(r, "id")
 
-	if _, err := h.db.GetFile(r.Context(), fileID); err != nil {
+	file, err := h.db.GetFile(r.Context(), fileID)
+	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			writeJSON(w, http.StatusNotFound, errBody("file not found"))
 			return
@@ -68,6 +70,8 @@ func (h *Handler) handleDownloadFile(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
+	verified := file.VerificationStatus != nil && *file.VerificationStatus == db.VerificationStatusOK
+	w.Header().Set("X-File-Verified", strconv.FormatBool(verified))
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, fileID))
 	w.Header().Set("Content-Type", "application/octet-stream")
 
